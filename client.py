@@ -4,7 +4,7 @@ from twisted.internet import reactor
 
 
 SERVER_HOST = 'localhost'
-SERVER_PORT = 10002
+SERVER_PORT = 8000
 
 class CurrencyProtocol(Protocol):
 
@@ -64,7 +64,7 @@ def main():
         print 'done'
         reactor.stop()
 
-    d = get_rates(SERVER_HOST, SERVER_PORT)
+    d = get_currency_rates(SERVER_HOST, SERVER_PORT)
     d.addCallbacks(print_rates)
     reactor.run()
 
