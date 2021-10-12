@@ -4,7 +4,7 @@ from twisted.internet.protocol import Protocol, ClientFactory
 
 SERVER_HOST = "localhost"
 SERVER_PORT = 8000
-CURRENCY = "USDUAH"
+CURRENCY = "USD/UAH"
 INTERVAL = 5
 
 class CurrencyProtocol(Protocol):

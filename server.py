@@ -12,7 +12,7 @@ class CurrencyProtocol(Protocol):
 
     def dataReceived(self, data):
         print "received: ", data
-        self.sendData()
+        self.sendData(data)
 
     def connectionMade(self):
         print "connection made"
@@ -20,8 +20,8 @@ class CurrencyProtocol(Protocol):
     def connectionLost(self, reason):
         print "connection lost", reason
 
-    def sendData(self):
-        deferredRates = self.factory.obtainRates()
+    def sendData(self, data):
+        deferredRates = self.factory.obtainRates(data)
         deferredRates.addCallbacks(self.transport.write, self.sendErrorValue)
 
     def sendErrorValue(self, failure):
@@ -35,8 +35,8 @@ class CurrencyServerFactory(ServerFactory):
     def __init__(self, agent):
         self.agent = agent
 
-    def obtainRates(self):
-        return self.agent.performRequest()
+    def obtainRates(self, data):
+        return self.agent.performRequest(data)
 
 
 class HttpAgentHandler(object):
@@ -45,8 +45,9 @@ class HttpAgentHandler(object):
         self.agent = agent
         self.url = url
 
-    def performRequest(self):
-        response = self.agent.request(b"GET", self.url)
+    def performRequest(self, data):
+        url = self.url + data + "/"
+        response = self.agent.request(b"GET", url)
         return response.addCallback(self.handleResponse)
 
     def handleResponse(self, response):
