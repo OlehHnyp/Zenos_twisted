@@ -130,3 +130,6 @@ dmypy.json
 
 #IDE config
 .idea/
+
+#bufer file
+buffer.txt

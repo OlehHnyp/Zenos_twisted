@@ -4,8 +4,8 @@ from twisted.internet.protocol import Protocol, ClientFactory
 
 SERVER_HOST = "localhost"
 SERVER_PORT = 8000
-CURRENCY = "USD/UAH"
-INTERVAL = 5
+CURRENCY = "USD/UAH"  # add currency pair you want to track, for example: "USD/UAH"
+INTERVAL = 5  # add interval in seconds for obtaining currency pair rate
 
 class CurrencyProtocol(Protocol):
 

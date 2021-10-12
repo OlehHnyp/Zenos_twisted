@@ -1,4 +1,6 @@
 import json
+import os
+import time
 
 from twisted.internet.protocol import ServerFactory, Protocol
 from twisted.web.client import Agent, ResponseDone
@@ -8,6 +10,7 @@ from twisted.internet import defer
 PORT = 8000
 HOST = "localhost"
 EXTERNAL_SERVER_URL = ""  # add api url here
+BUFFER_FILE = "buffer.txt"
 
 
 class CurrencyProtocol(Protocol):
@@ -24,7 +27,6 @@ class CurrencyProtocol(Protocol):
 
     def sendData(self, data):
         deferredRates = self.factory.obtainRates(data)
-        deferredRates.addCallback(self.factory.deleteUnnecessaryData)
         deferredRates.addCallbacks(self.transport.write, self.sendErrorValue)
 
     def sendErrorValue(self, failure):
@@ -35,17 +37,42 @@ class CurrencyServerFactory(ServerFactory):
 
     protocol = CurrencyProtocol
 
-    def __init__(self, agent):
+    def __init__(self, agent, buf):
         self.agent = agent
+        self.bufferHandler = buf
+        self.bufferData = self.bufferHandler.getBufferData()
 
-    def obtainRates(self, data):
-        return self.agent.performRequest(data)
+    @defer.inlineCallbacks
+    def obtainRates(self, currencies):
+        validRates = self.getValidRates(currencies)
+        if validRates:
+            rates = yield validRates
+            print 'got from buffer'
+        else:
+            rates = yield self.agent.performRequest(currencies)
+            rates = yield self.deleteUnnecessaryData(rates)
+            rates = yield self.addToBufferData(rates, currencies)
+            print 'got from API'
+
+        defer.returnValue(rates)
+
+    def addToBufferData(self, data, currencies):
+        self.bufferData[currencies] = json.loads(data)
+        self.bufferHandler.reWriteBufferFile(self.bufferData)
+        return data
+
+
+    def getValidRates(self, currencies):
+        rates = self.bufferData.get(currencies)
+        if rates and rates.get("time_next_update_unix") > time.time():
+            return json.dumps(rates)
+        return None
 
     @staticmethod
     def deleteUnnecessaryData(response):
         response = json.loads(response)
-        del response['documentation']
-        del response['terms_of_use']
+        del response["documentation"]
+        del response["terms_of_use"]
         response = json.dumps(response)
         return response
 
@@ -62,10 +89,9 @@ class HttpAgentHandler(object):
         return response.addCallback(self.handleResponse)
 
     def handleResponse(self, response):
-        finished =defer.Deferred()
+        finished = defer.Deferred()
         response.deliverBody(HttpBodyHandler(finished, response.code, response.phrase))
         return finished
-
 
 
 class HttpBodyHandler(Protocol):
@@ -95,11 +121,32 @@ class HttpBodyHandler(Protocol):
             self.deferred = None
 
 
+class BufferHandler(object):
+
+    def __init__(self, bufferFile):
+        self._bufferFile = bufferFile
+
+    def reWriteBufferFile(self, data):
+        with open(self._bufferFile, "w") as f:
+            json.dump(data, f)
+    
+    def getBufferData(self):
+        if self._bufferExists():
+            with open(self._bufferFile, "r") as f:
+                bufferData = json.load(f)
+            return bufferData
+        return {}
+    
+    def _bufferExists(self):
+        return os.path.isfile(self._bufferFile) and os.path.getsize(self._bufferFile) > 0
+
+
 def main():
+    buf = BufferHandler(BUFFER_FILE)
     from twisted.internet import reactor
     agent = Agent(reactor)
     httpAgentHandler = HttpAgentHandler(agent, EXTERNAL_SERVER_URL)
-    factory = CurrencyServerFactory(httpAgentHandler)
+    factory = CurrencyServerFactory(httpAgentHandler, buf)
     reactor.listenTCP(port=PORT, interface=HOST, factory=factory)
     reactor.run()
 
