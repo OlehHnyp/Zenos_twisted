@@ -2,23 +2,23 @@ from twisted.internet import task
 from twisted.internet.protocol import Protocol, ClientFactory
 
 
-SERVER_HOST = 'localhost'
+SERVER_HOST = "localhost"
 SERVER_PORT = 8000
-CURRENCY = 'USDUAH'
+CURRENCY = "USDUAH"
 INTERVAL = 5
 
 class CurrencyProtocol(Protocol):
 
     def connectionMade(self):
-        print 'Connection made'
+        print "Connection made"
         self.startLoop()
 
     def dataReceived(self, data):
-        print 'data received'
+        print "data received"
         print data
 
     def connectionLost(self, reason):
-        print 'connection lost', reason
+        print "connection lost", reason
 
     def startLoop(self):
         self._sender = task.LoopingCall(self.sendRequest)
@@ -39,5 +39,5 @@ def main():
     reactor.connectTCP(SERVER_HOST, SERVER_PORT, factory)
     reactor.run()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

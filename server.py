@@ -4,28 +4,28 @@ from twisted.internet import defer
 
 
 PORT = 8000
-HOST = 'localhost'
-EXTERNAL_SERVER_URL = ''  # add api url here
+HOST = "localhost"
+EXTERNAL_SERVER_URL = ""  # add api url here
 
 
 class CurrencyProtocol(Protocol):
 
     def dataReceived(self, data):
-        print 'received: ', data
+        print "received: ", data
         self.sendData()
 
     def connectionMade(self):
-        print 'connection made'
+        print "connection made"
 
     def connectionLost(self, reason):
-        print 'connection lost', reason
+        print "connection lost", reason
 
     def sendData(self):
-        deferred_rates = self.factory.obtainRates()
-        deferred_rates.addCallbacks(self.transport.write, self.sendErrorValue)
+        deferredRates = self.factory.obtainRates()
+        deferredRates.addCallbacks(self.transport.write, self.sendErrorValue)
 
     def sendErrorValue(self, failure):
-        self.transport.write(failure.value)
+        self.transport.write(str(failure.value))
 
 
 class CurrencyServerFactory(ServerFactory):
@@ -51,26 +51,35 @@ class HttpAgentHandler(object):
 
     def handleResponse(self, response):
         finished =defer.Deferred()
-        response.deliverBody(HttpBodyHandler(finished))
+        response.deliverBody(HttpBodyHandler(finished, response.code, response.phrase))
         return finished
 
 
 class HttpBodyHandler(Protocol):
 
-    body = b''
+    body = b""
 
-    def __init__(self, deferred):
+    def __init__(self, deferred, code, phrase):
         self.deferred = deferred
+        self.code = code
+        self.phrase = phrase
 
     def dataReceived(self, data):
         self.body += data
 
     def connectionLost(self, reason):
-        if reason.check(ResponseDone):
+        self.deferred.addBoth(self.cleanDeferred)
+        if reason.check(ResponseDone) and self.code == 200:
             self.deferred.callback(self.body)
+        elif reason.check(ResponseDone):
+            responseInfo = "{} {}".format(self.code, self.phrase)
+            self.deferred.callback(responseInfo)
         else:
             self.deferred.errback(reason)
 
+    def cleanDeferred(self, value):
+        if self.deferred is not None:
+            self.deferred = None
 
 
 
@@ -83,5 +92,5 @@ def main():
     reactor.listenTCP(port=PORT, interface=HOST, factory=factory)
     reactor.run()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
