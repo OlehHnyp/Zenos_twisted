@@ -1,3 +1,5 @@
+import json
+
 from twisted.internet.protocol import ServerFactory, Protocol
 from twisted.web.client import Agent, ResponseDone
 from twisted.internet import defer
@@ -22,6 +24,7 @@ class CurrencyProtocol(Protocol):
 
     def sendData(self, data):
         deferredRates = self.factory.obtainRates(data)
+        deferredRates.addCallback(self.factory.deleteUnnecessaryData)
         deferredRates.addCallbacks(self.transport.write, self.sendErrorValue)
 
     def sendErrorValue(self, failure):
@@ -37,6 +40,14 @@ class CurrencyServerFactory(ServerFactory):
 
     def obtainRates(self, data):
         return self.agent.performRequest(data)
+
+    @staticmethod
+    def deleteUnnecessaryData(response):
+        response = json.loads(response)
+        del response['documentation']
+        del response['terms_of_use']
+        response = json.dumps(response)
+        return response
 
 
 class HttpAgentHandler(object):
@@ -54,6 +65,7 @@ class HttpAgentHandler(object):
         finished =defer.Deferred()
         response.deliverBody(HttpBodyHandler(finished, response.code, response.phrase))
         return finished
+
 
 
 class HttpBodyHandler(Protocol):
@@ -74,15 +86,13 @@ class HttpBodyHandler(Protocol):
             self.deferred.callback(self.body)
         elif reason.check(ResponseDone):
             responseInfo = "{} {}".format(self.code, self.phrase)
-            self.deferred.callback(responseInfo)
+            self.deferred.errback(Exception(responseInfo))
         else:
             self.deferred.errback(reason)
 
     def cleanDeferred(self, value):
         if self.deferred is not None:
             self.deferred = None
-
-
 
 
 def main():
