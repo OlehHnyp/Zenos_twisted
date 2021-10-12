@@ -133,3 +133,9 @@ dmypy.json
 
 #bufer file
 buffer.txt
+
+#  ckient csv files
+*_*.csv
+
+# example files
+!/examples/*

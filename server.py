@@ -16,7 +16,6 @@ BUFFER_FILE = "buffer.txt"
 class CurrencyProtocol(Protocol):
 
     def dataReceived(self, data):
-        print "received: ", data
         self.sendData(data)
 
     def connectionMade(self):
@@ -47,12 +46,12 @@ class CurrencyServerFactory(ServerFactory):
         validRates = self.getValidRates(currencies)
         if validRates:
             rates = yield validRates
-            print 'got from buffer'
+            print 'got from buffer ', currencies
         else:
             rates = yield self.agent.performRequest(currencies)
             rates = yield self.deleteUnnecessaryData(rates)
             rates = yield self.addToBufferData(rates, currencies)
-            print 'got from API'
+            print 'got from API ', currencies
 
         defer.returnValue(rates)
 
