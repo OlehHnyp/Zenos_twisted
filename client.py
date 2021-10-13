@@ -77,7 +77,7 @@ class CurrencyClientFactory(ClientFactory):
             if self._fileEmptyOrNotExist():
                 writer.writeheader()
             writer.writerow(data)
-            print "writing... ", self.currency, data.get("result") or data.get("error")
+            print "writing... ", self.currency, data.get("conversion_rate") or data.get("error")
 
 
 def main():
