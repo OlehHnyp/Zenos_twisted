@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#IDE config
+.idea/
+
+#bufer file
+serverData/buffer.txt
+
+#  client csv files
+*_*.csv
+
