@@ -137,5 +137,3 @@ serverData/buffer.txt
 #  client csv files
 *_*.csv
 
-# example files
-!/examples/*
