@@ -37,29 +37,30 @@ class CurrencyClientFactory(ClientFactory):
 
     def __init__(self, currency):
         self.currency = currency
-        self.file = "_".join(currency.split("/")) + ".csv"
+        self.file = "clientData/" + "_".join(currency.split("/")) + ".csv"
+        self.fieldnames = [
+            "result",
+            "base_code",
+            "target_code",
+            "conversion_rate",
+            "time_last_update_utc",
+            "time_last_update_unix",
+            "time_next_update_utc",
+            "time_next_update_unix",
+            "error",
+        ]
 
     def _fileEmptyOrNotExist(self):
         return not os.path.isfile(self.file) or os.path.getsize(self.file) == 0
 
     def writeIntoFile(self, data):
         data = json.loads(data)
-        with open(self.file, "a") as f:
-            fieldnames = [
-                'result',
-                'base_code',
-                'target_code',
-                'conversion_rate',
-                'time_last_update_utc',
-                'time_last_update_unix',
-                'time_next_update_utc',
-                'time_next_update_unix'
-            ]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+        with open(self.file, "a+") as f:
+            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
             if self._fileEmptyOrNotExist():
                 writer.writeheader()
             writer.writerow(data)
-            print "writing... ", self.currency
+            print "writing... ", self.currency, data.get("result") or data.get("error")
 
 
 def main():

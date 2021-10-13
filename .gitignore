@@ -132,9 +132,9 @@ dmypy.json
 .idea/
 
 #bufer file
-buffer.txt
+serverData/buffer.txt
 
-#  ckient csv files
+#  client csv files
 *_*.csv
 
 # example files

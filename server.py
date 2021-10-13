@@ -10,7 +10,7 @@ from twisted.internet import defer
 PORT = 8000
 HOST = "localhost"
 EXTERNAL_SERVER_URL = ""  # add api url here
-BUFFER_FILE = "buffer.txt"
+BUFFER_FILE = "serverData/buffer.txt"
 
 
 class CurrencyProtocol(Protocol):
@@ -29,7 +29,10 @@ class CurrencyProtocol(Protocol):
         deferredRates.addCallbacks(self.transport.write, self.sendErrorValue)
 
     def sendErrorValue(self, failure):
-        self.transport.write(str(failure.value))
+        response = dict.fromkeys(self.factory.fieldnames)
+        response["error"] = str(failure.value)
+        response = json.dumps(response)
+        self.transport.write(response)
 
 
 class CurrencyServerFactory(ServerFactory):
@@ -40,6 +43,17 @@ class CurrencyServerFactory(ServerFactory):
         self.agent = agent
         self.bufferHandler = buf
         self.bufferData = self.bufferHandler.getBufferData()
+        self.fieldnames = [
+            "result",
+            "base_code",
+            "target_code",
+            "conversion_rate",
+            "time_last_update_utc",
+            "time_last_update_unix",
+            "time_next_update_utc",
+            "time_next_update_unix",
+            "error",
+        ]
 
     @defer.inlineCallbacks
     def obtainRates(self, currencies):
@@ -49,7 +63,7 @@ class CurrencyServerFactory(ServerFactory):
             print 'got from buffer ', currencies
         else:
             rates = yield self.agent.performRequest(currencies)
-            rates = yield self.deleteUnnecessaryData(rates)
+            rates = yield self.setFields(rates)
             rates = yield self.addToBufferData(rates, currencies)
             print 'got from API ', currencies
 
@@ -60,19 +74,28 @@ class CurrencyServerFactory(ServerFactory):
         self.bufferHandler.reWriteBufferFile(self.bufferData)
         return data
 
-
     def getValidRates(self, currencies):
         rates = self.bufferData.get(currencies)
         if rates and rates.get("time_next_update_unix") > time.time():
             return json.dumps(rates)
         return None
 
-    @staticmethod
-    def deleteUnnecessaryData(response):
+    def setFields(self, response):
         response = json.loads(response)
+        self._deleteUnnecessaryData(response)
+        self._addErrorField(response)
+        response = json.dumps(response)
+        return response
+
+    @staticmethod
+    def _deleteUnnecessaryData(response):
         del response["documentation"]
         del response["terms_of_use"]
-        response = json.dumps(response)
+        return response
+
+    @staticmethod
+    def _addErrorField(response):
+        response['error'] = None
         return response
 
 
